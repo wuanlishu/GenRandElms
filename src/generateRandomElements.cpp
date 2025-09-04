@@ -3,26 +3,129 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
+#include <random>
+#include <string>
 
 // Define Elements Type
-enum class ElementType {
+enum class ElementType
+{
     LINEAR_TRIANGLE,
     LINEAR_QUAD,
     LINEAR_TETRA,
     LINEAR_HEXA,
     LINEAR_PYRAMID,
-    LINEAR_PRISM
+    LINEAR_PRISM,
+    QUADRATIC_TRIANGLE,
+    QUADRATIC_QUAD,
+    QUADRATIC_TETRA,
+    QUADRATIC_HEX
 };
 
 // Generate random node coordination
-std::vector<std::vector<double>> generateNodes(int numNodes, double minCoord, double maxCoord) {
+std::vector<std::vector<double>> generateNodes(int numNodes, double minCoord, double maxCoord)
+{
     std::vector<std::vector<double>> nodes(numNodes, std::vector<double>(3, 0.0));
-    for (int i = 0; i < numNodes; ++i) {
-        nodes[i][0] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord);
-        nodes[i][1] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord);
-        nodes[i][2] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord);
+    for (int i = 0; i < numNodes; ++i)
+    {
+        nodes[i][0] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord); // x
+        nodes[i][1] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord); // y
+        nodes[i][2] = minCoord + static_cast<double>(rand()) / RAND_MAX * (maxCoord - minCoord); // z
     }
     return nodes;
+}
+
+// quadratic points moved at 1/4 edge length area
+double random_disturb_num(double low, double up, double scale = 0.15)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::uniform_real_distribution<double> dist(-1.0, 1.0);
+    double rand_num = dist(gen);
+
+    return std::abs(up - low) * scale * rand_num;
+}
+
+void addQuadraticNodes(std::vector<std::vector<double>>& randomNodes, ElementType elmType)
+{
+    switch(elmType)
+    {
+        case ElementType::QUADRATIC_TRIANGLE:
+        {
+            int qdrNds = 3;
+            std::vector<std::vector<double>> quadraticNodes(qrdNds, std::vector<double>(3, 0.0));
+            for (int i = 0; i < qdrNds; ++i)
+            {
+                quadraticNodes[i][0] = 0.5 * (randomNodes[i][0] + randomNodes[(i+1)%qdrNds][0]) + random_disturb_num(randomNodes[i][0], randomNodes[(i+1)%qdrNds][0]);
+                quadraticNodes[i][1] = 0.5 * (randomNodes[i][1] + randomNodes[(i+1)%qdrNds][1]) + random_disturb_num(randomNodes[i][1], randomNodes[(i+1)%qdrNds][1]);
+                quadraticNodes[i][2] = 0.5 * (randomNodes[i][2] + randomNodes[(i+1)%qdrNds][2]) + random_disturb_num(randomNodes[i][2], randomNodes[(i+1)%qdrNds][2]);
+            }
+            randomNodes.insert(randomNodes.end(), quadraticNodes.begin(), quadraticNodes.end());
+            break;
+        }
+        case ElementType::QUADRATIC_QUAD:
+        {
+            int qdrNds = 4;
+            std::vector<std::vector<double>> quadraticNodes(qrdNds, std::vector<double>(3, 0.0));
+            for (int i = 0; i < qdrNds; ++i)
+            {
+                quadraticNodes[i][0] = 0.5 * (randomNodes[i][0] + randomNodes[(i+1)%qdrNds][0]) + random_disturb_num(randomNodes[i][0], randomNodes[(i+1)%qdrNds][0]);
+                quadraticNodes[i][1] = 0.5 * (randomNodes[i][1] + randomNodes[(i+1)%qdrNds][1]) + random_disturb_num(randomNodes[i][1], randomNodes[(i+1)%qdrNds][1]);
+                quadraticNodes[i][2] = 0.5 * (randomNodes[i][2] + randomNodes[(i+1)%qdrNds][2]) + random_disturb_num(randomNodes[i][2], randomNodes[(i+1)%qdrNds][2]);
+            }
+            randomNodes.insert(randomNodes.end(), quadraticNodes.begin(), quadraticNodes.end());
+            break;
+        }
+        case ElementType::QUADRATIC_TETRA:
+        {
+            int qdrNds = 6;
+            std::vector<std::vector<double>> quadraticNodes(qrdNds, std::vector<double>(3, 0.0));
+            for (int i = 0; i < 4; ++i)
+            {
+                quadraticNodes[i][0] = 0.5 * (randomNodes[i][0] + randomNodes[(i+1)%4][0]) + random_disturb_num(randomNodes[i][0], randomNodes[(i+1)%4][0]);
+                quadraticNodes[i][1] = 0.5 * (randomNodes[i][1] + randomNodes[(i+1)%4][1]) + random_disturb_num(randomNodes[i][1], randomNodes[(i+1)%4][1]);
+                quadraticNodes[i][2] = 0.5 * (randomNodes[i][2] + randomNodes[(i+1)%4][2]) + random_disturb_num(randomNodes[i][2], randomNodes[(i+1)%4][2]);
+            }
+
+            quadraticNodes[4][0] = 0.5 * (randomNodes[1][0] + randomNodes[3][0]) + random_disturb_num(randomNodes[1][0], randomNodes[3][0]);
+            quadraticNodes[4][1] = 0.5 * (randomNodes[1][1] + randomNodes[3][1]) + random_disturb_num(randomNodes[1][1], randomNodes[3][1]);
+            quadraticNodes[4][2] = 0.5 * (randomNodes[1][2] + randomNodes[3][2]) + random_disturb_num(randomNodes[1][2], randomNodes[3][2]);
+
+            quadraticNodes[5][0] = 0.5 * (randomNodes[2][0] + randomNodes[3][0]) + random_disturb_num(randomNodes[2][0], randomNodes[3][0]);
+            quadraticNodes[5][1] = 0.5 * (randomNodes[2][1] + randomNodes[3][1]) + random_disturb_num(randomNodes[2][1], randomNodes[3][1]);
+            quadraticNodes[5][2] = 0.5 * (randomNodes[2][2] + randomNodes[3][2]) + random_disturb_num(randomNodes[2][2], randomNodes[3][2]);
+
+            randomNodes.insert(randomNodes.end(), quadraticNodes.begin(), quadraticNodes.end());
+            break;
+        }
+        case ElementType::QUADRATIC_HEX:
+        {
+            int qdrNds = 12;
+            std::vector<std::vector<double>> quadraticNodes(qrdNds, std::vector<double>(3, 0.0));
+            for (int i = 0; i < 4; ++i)
+            {
+                quadraticNodes[i][0] = 0.5 * (randomNodes[i][0] + randomNodes[(i+1)%4][0]) + random_disturb_num(randomNodes[i][0], randomNodes[(i+1)%4][0]);
+                quadraticNodes[i][1] = 0.5 * (randomNodes[i][1] + randomNodes[(i+1)%4][1]) + random_disturb_num(randomNodes[i][1], randomNodes[(i+1)%4][1]);
+                quadraticNodes[i][2] = 0.5 * (randomNodes[i][2] + randomNodes[(i+1)%4][2]) + random_disturb_num(randomNodes[i][2], randomNodes[(i+1)%4][2]);
+            }
+
+            for (int i = 0; i < 4; ++i)
+            {
+                quadraticNodes[i+4][0] = 0.5 * (randomNodes[i][0] + randomNodes[(i+4)%8][0]) + random_disturb_num(randomNodes[i][0], randomNodes[(i+4)%8][0]);
+                quadraticNodes[i+4][1] = 0.5 * (randomNodes[i][1] + randomNodes[(i+4)%8][1]) + random_disturb_num(randomNodes[i][1], randomNodes[(i+4)%8][1]);
+                quadraticNodes[i+4][2] = 0.5 * (randomNodes[i][2] + randomNodes[(i+4)%8][2]) + random_disturb_num(randomNodes[i][2], randomNodes[(i+4)%8][2]);
+            }
+
+            for (int i = 0; i < 4; ++i)
+            {
+                quadraticNodes[i+8][0] = 0.5 * (randomNodes[i+4][0] + randomNodes[(i+1)%4+4][0]) + random_disturb_num(randomNodes[i+4][0], randomNodes[(i+1)%4+4][0]);
+                quadraticNodes[i+8][1] = 0.5 * (randomNodes[i+4][1] + randomNodes[(i+1)%4+4][1]) + random_disturb_num(randomNodes[i+4][1], randomNodes[(i+1)%4+4][1]);
+                quadraticNodes[i+8][2] = 0.5 * (randomNodes[i+4][2] + randomNodes[(i+1)%4+4][2]) + random_disturb_num(randomNodes[i+4][2], randomNodes[(i+1)%4+4][2]);
+            }
+            randomNodes.insert(randomNodes.end(), quadraticNodes.begin(), quadraticNodes.end());
+            break;
+        }
+    }
 }
 
 std::vector<std::vector<std::vector<double>>> getStandardElement(ElementType type, double minCoord, double maxCoord) {
@@ -186,8 +289,35 @@ std::vector<std::vector<std::vector<double>>> generateElements(ElementType type,
                 randomNodes = generateNodes(6, minCoord, maxCoord);
                 break;
             }
+            case ElementType::QUADRATIC_TRIANGLE: {
+                randomNodes = generateNodes(3, minCoord, maxCoord);
+                addQuadraticNodes(randomNodes, ElementType::QUADRATIC_TRIANGLE);
+                break;
+            }
+            case ElementType::QUADRATIC_QUAD: {
+                randomNodes = generateNodes(4, minCoord, maxCoord);
+                addQuadraticNodes(randomNodes, ElementType::QUADRATIC_QUAD);
+                break;
+            }
+            case ElementType::QUADRATIC_TETRA: {
+                randomNodes = generateNodes(4, minCoord, maxCoord);
+                addQuadraticNodes(randomNodes, ElementType::QUADRATIC_TETRA);
+                break;
+            }
+            case ElementType::QUADRATIC_HEX: {
+                randomNodes = generateNodes(8, minCoord, maxCoord);
+                addQuadraticNodes(randomNodes, ElementType::QUADRATIC_HEX);
+                break;
+            }
         }
-        elements.push_back(randomNodes);
+        try {
+            elements.push_back(randomNodes);
+        }
+        catch (const std::bad_alloc& e)
+        {
+            std::cerr << e.what() << std::endl;
+        }
+
     }
     return elements;
 }
@@ -195,10 +325,11 @@ std::vector<std::vector<std::vector<double>>> generateElements(ElementType type,
 int main() {
     std::srand(static_cast<unsigned int>(std::time(0)));
 
-    ElementType type = ElementType::LINEAR_TRIANGLE;
+    ElementType type = ElementType::QUADRATIC_TRIANGLE;
     int numElements = 10;
     double minCoord = 0.0;
     double maxCoord = 10.0;
+
     std::vector<std::vector<std::vector<double>>> element = generateElements(type, numElements, minCoord, maxCoord);
 
     std::ofstream outFile;
@@ -206,15 +337,61 @@ int main() {
     outFile.open("D:\\Metric.txt");
     if(!outFile.is_open()) {
         std::cerr << "Failed to open the file." <<std::endl;
+        return 1;
     }
 
     for (int i = 0; i < (int)element.size(); ++i) {
         for (int j = 0; j < (int)element[i].size(); ++j) {
-            outFile << "(" << element[i][j][0] << "," << element[i][j][1] << "," << element[i][j][2] << ")";
+            outFile << "{" << element[i][j][0] << "," << element[i][j][1] << "," << element[i][j][2] << "}";
         }
         outFile << std::endl;
     }
     outFile.close();
+
+    for (int i = 0; i < (int)element.size(); ++i)
+    {
+        std::string filePath = "D:\\RandomElement" + std::to_string(i) + ".nas";
+        outFile.open(filePath.c_str());
+        if(!outFile.is_open())
+        {
+            std::cerr << "Failed to open the file!" << std::endl;
+            return 1;
+        }
+        outFile << "BEGIN BULK" <<std::endl;
+        for (int j = 0; j < (int)element[i].size(); ++j)
+        {
+            outFile << "GRID," << j+1 << ",," << element[i][j][0] << "," << element[i][j][1] << "," << element[i][j][2] << std::endl;
+        }
+        switch(type)
+        {
+            case ElementType::LINEAR_TRIANGLE:
+                outFile << "CTRIA3,1,1,1,2,3" << std::endl; 
+                break;
+            case ElementType::LINEAR_QUAD:
+                outFile << "CQUAD4,1,1,1,2,3,4" << std::endl;
+                break;
+            case ElementType::LINEAR_TETRA:
+                outFile << "CTETRA,1,1,1,2,3,4" << std::endl;
+                break;
+            case ElementType::LINEAR_HEX:
+                outFile << "CHEXA,1,1,1,2,3,4,5,6,7,8" << std::endl;
+                break;
+            case ElementType::QUADRATIC_TRIANGLE:
+                outFile << "CTRIA6,1,1,1,2,3,4,5,6" << std::endl;
+                break;
+            case ElementType::QUADRATIC_QUAD:
+                outFile << "CQUAD8,1,1,1,2,3,4,5,6,7,8" << std::endl;
+                break;
+            case ElementType::QUADRATIC_TETRA:
+                outFile << "CTETRA,1,1,1,2,3,4,5,6,7,8,9,10" << std::endl;
+                break;
+            case ElementType::QUADRATIC_HEX:
+                outFile << "CHEXA,1,1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,18,20" << std::endl;
+                break;
+        }
+        outFile << "ENDDATA" << std::endl;
+        outFile.close();
+     }
     std::cout << "Data has been written to the file." << std::endl;
     return 0;
 }
